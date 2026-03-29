@@ -1,0 +1,130 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "mrdelivery.ro@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isMinister() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'minister' || isAdmin());
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasOnly(['uid', 'email', 'name', 'role', 'createdAt', 'cnp']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.name is string &&
+             data.role in ['citizen', 'minister', 'admin'] &&
+             data.createdAt is string &&
+             (!('cnp' in data) || (data.cnp is string && data.cnp.size() == 13 && data.cnp.matches('^[1-9]\\\\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\\\\d|3[01])\\\\d{6}$')));
+    }
+
+    function isValidRequest(data) {
+      return data.userId is string &&
+             data.userName is string &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.description is string && data.description.size() > 0 && data.description.size() <= 5000 &&
+             data.ministry is string &&
+             data.status in ['pending_ai', 'pending_minister', 'approved', 'rejected'] &&
+             data.createdAt is string &&
+             data.updatedAt is string &&
+             (!('isNews' in data) || data.isNews is bool) &&
+             (!('sourceUrl' in data) || data.sourceUrl is string) &&
+             (!('sentToRealMinister' in data) || data.sentToRealMinister is bool) &&
+             (!('applicantPhone' in data) || data.applicantPhone is string) &&
+             (!('gdprConsent' in data) || data.gdprConsent is bool);
+    }
+
+    function isValidComment(data) {
+      return data.keys().hasOnly(['requestId', 'userId', 'userName', 'text', 'createdAt']) &&
+             data.requestId is string &&
+             data.userId is string &&
+             data.userName is string &&
+             data.text is string && data.text.size() > 0 && data.text.size() <= 1000 &&
+             data.createdAt is string;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      // Anyone can read user profiles (needed for displaying names)
+      allow read: if isAuthenticated();
+      // Users can create their own profile as 'citizen'. Admins can create any role.
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) &&
+                    ((isOwner(userId) && request.resource.data.role == 'citizen' && request.resource.data.uid == request.auth.uid) || isAdmin());
+      // Users can update their own profile (but not role). Admins can update anything.
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) &&
+                    ((isOwner(userId) && request.resource.data.role == resource.data.role && request.resource.data.uid == resource.data.uid) || isAdmin());
+    }
+
+    match /requests/{requestId} {
+      // Anyone can read approved requests (public forum).
+      // Owners can read their own requests.
+      // Ministers can read all requests.
+      allow read: if resource.data.status == 'approved' || (isAuthenticated() && (isDocOwner() || isMinister()));
+
+      // Citizens can create requests.
+      // Ministers can create news requests directly.
+      allow create: if isAuthenticated() &&
+                    isValidRequest(request.resource.data) &&
+                    request.resource.data.userId == request.auth.uid &&
+                    (
+                      (request.resource.data.status == 'pending_ai' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.keys().hasAll(['cnp'])) ||
+                      (isMinister() && request.resource.data.status == 'approved' && request.resource.data.isNews == true) ||
+                      (request.resource.data.status == 'approved' && request.resource.data.sentToRealMinister == true && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.keys().hasAll(['cnp']))
+                    );
+
+      // Owners can update their requests if pending_ai.
+      // Ministers can update requests to approve/reject/modify.
+      allow update: if isAuthenticated() &&
+                    isValidRequest(request.resource.data) &&
+                    request.resource.data.userId == resource.data.userId && // userId cannot change
+                    (
+                      (isDocOwner() && resource.data.status == 'pending_ai') ||
+                      isMinister()
+                    );
+
+      // Only admins can delete requests.
+      allow delete: if isAdmin();
+    }
+
+    match /comments/{commentId} {
+      // Anyone can read comments
+      allow read: if true;
+
+      // Only authenticated users can create comments
+      allow create: if isAuthenticated() &&
+                    isValidComment(request.resource.data) &&
+                    request.resource.data.userId == request.auth.uid;
+
+      // Only admins can update or delete comments
+      allow update, delete: if isAdmin();
+    }
+  }
+}

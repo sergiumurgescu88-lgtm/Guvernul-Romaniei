@@ -1,0 +1,70 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a citizen or a minister.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["citizen", "minister", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "cnp": { "type": "string", "minLength": 13, "maxLength": 13 }
+      },
+      "required": ["uid", "email", "name", "role", "createdAt"]
+    },
+    "Request": {
+      "title": "Request",
+      "description": "A citizen's request to a ministry.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "ministry": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending_ai", "pending_minister", "approved", "rejected"] },
+        "aiResponse": { "type": "string" },
+        "legalBasis": { "type": "string" },
+        "steps": { "type": "string" },
+        "deadline": { "type": "string" },
+        "department": { "type": "string" },
+        "referenceNumber": { "type": "string" },
+        "ministerResponse": { "type": "string" },
+        "isNews": { "type": "boolean" },
+        "sourceUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userName", "title", "description", "ministry", "status", "createdAt", "updatedAt"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A comment on a public request.",
+      "type": "object",
+      "properties": {
+        "requestId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["requestId", "userId", "userName", "text", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "requests/{requestId}": {
+      "schema": "Request",
+      "description": "Citizen requests and AI/Minister responses."
+    },
+    "comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Public comments on requests."
+    }
+  }
+}
