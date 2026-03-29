@@ -8,31 +8,39 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { format } from 'date-fns';
 import { ro } from 'date-fns/locale';
 import { Loader2, Plus, Clock, CheckCircle2, XCircle, AlertCircle, User } from 'lucide-react';
 
-const MINISTRIES = [
-  "Cancelaria Prim-Ministrului",
-  "Ministerul Afacerilor Interne",
-  "Ministerul Afacerilor Externe",
-  "Ministerul Apărării Naționale",
-  "Ministerul Finanțelor",
-  "Ministerul Transporturilor și Infrastructurii",
-  "Ministerul Justiției",
-  "Ministerul Agriculturii și Dezvoltării Rurale",
-  "Ministerul Energiei",
-  "Ministerul Sănătății",
-  "Ministerul Investițiilor și Proiectelor Europene",
-  "Ministerul Educației și Cercetării",
-  "Ministerul Mediului, Apelor și Pădurilor",
-  "Ministerul Muncii, Familiei, Tineretului și Solidarității Sociale",
-  "Ministerul Economiei, Digitalizării, Antreprenoriatului și Turismului",
-  "Ministerul Dezvoltării, Lucrărilor Publice și Administrației",
-  "Ministerul Culturii"
-];
+const MINISTRY_CATEGORIES = {
+  "Guvernare & Administrație": [
+    "Cancelaria Prim-Ministrului",
+    "Ministerul Afacerilor Interne",
+    "Ministerul Afacerilor Externe",
+    "Ministerul Apărării Naționale",
+    "Ministerul Justiției",
+    "Ministerul Dezvoltării, Lucrărilor Publice și Administrației"
+  ],
+  "Economie & Finanțe": [
+    "Ministerul Finanțelor",
+    "Ministerul Economiei, Digitalizării, Antreprenoriatului și Turismului",
+    "Ministerul Investițiilor și Proiectelor Europene",
+    "Ministerul Energiei"
+  ],
+  "Infrastructură & Mediu": [
+    "Ministerul Transporturilor și Infrastructurii",
+    "Ministerul Agriculturii și Dezvoltării Rurale",
+    "Ministerul Mediului, Apelor și Pădurilor"
+  ],
+  "Social & Educație": [
+    "Ministerul Sănătății",
+    "Ministerul Educației și Cercetării",
+    "Ministerul Muncii, Familiei, Tineretului și Solidarității Sociale",
+    "Ministerul Culturii"
+  ]
+};
 
 export function CitizenDashboard() {
   const { user, profile, updateCnp } = useAuth();
@@ -215,8 +223,13 @@ export function CitizenDashboard() {
                     <SelectValue placeholder="Selectează ministerul" />
                   </SelectTrigger>
                   <SelectContent>
-                    {MINISTRIES.map(m => (
-                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    {Object.entries(MINISTRY_CATEGORIES).map(([category, ministries]) => (
+                      <SelectGroup key={category}>
+                        <SelectLabel className="font-bold text-blue-900 bg-slate-50">{category}</SelectLabel>
+                        {ministries.map(m => (
+                          <SelectItem key={m} value={m} className="pl-6">{m}</SelectItem>
+                        ))}
+                      </SelectGroup>
                     ))}
                   </SelectContent>
                 </Select>
